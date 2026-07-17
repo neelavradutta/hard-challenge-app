@@ -20,6 +20,7 @@ Thumbs.db
 
 # Build outputs
 *.apk
+!apk/dailygrind.apk
 *.ap_
 *.aab
 *.dex
