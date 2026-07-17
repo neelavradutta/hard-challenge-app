@@ -32,8 +32,8 @@ object Defaults {
         ChecklistItem(5, "Subjects (any 2)", "2 hrs"),
         ChecklistItem(6, "Job applied", null),
         ChecklistItem(7, "Walk", "1 hr"),
-        ChecklistItem(8, "Sleep before", "2 AM"),
-        ChecklistItem(9, "Wake up before", "8:30 AM"),
-        ChecklistItem(10, "Screen time <", "3 hrs")
+        ChecklistItem(8, "Sleep before 2 AM", null),
+        ChecklistItem(9, "Wake up before 8:30 AM", null),
+        ChecklistItem(10, "Screen time < 3 hrs", null)
     )
 }

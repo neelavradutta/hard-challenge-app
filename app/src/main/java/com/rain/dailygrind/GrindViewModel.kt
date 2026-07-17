@@ -89,6 +89,12 @@ class GrindViewModel(private val repo: LogRepository) : ViewModel() {
         })
     }
 
+    fun setLabel(id: Int, label: String) = update { current ->
+        current.copy(items = current.items.map {
+            if (it.id == id) it.copy(label = label.take(40)) else it
+        })
+    }
+
     fun setDuration(id: Int, duration: String) = update { current ->
         current.copy(items = current.items.map {
             if (it.id == id) it.copy(duration = duration.take(12).ifBlank { null }) else it

@@ -49,14 +49,13 @@ class LogRepository(private val context: Context) {
             else -> null
         }
         return if (candidate != null) {
-            // labels may change between app versions — always take current ones;
-            // fill missing duration with default (e.g. times moved into duration)
+            // migration: sleep/wake/screen time moved from duration into the label
             candidate.copy(items = candidate.items.map { item ->
-                val def = Defaults.checklist.find { it.id == item.id }
-                if (def != null) item.copy(
-                    label = def.label,
-                    duration = item.duration ?: def.duration
-                ) else item
+                val plain = item.id == Defaults.SLEEP_ID ||
+                    item.id == Defaults.WAKE_ID || item.id == Defaults.SCREEN_ID
+                if (plain && item.duration != null)
+                    item.copy(label = "${item.label} ${item.duration}".take(40), duration = null)
+                else item
             })
         } else {
             val fresh = fresh(today)

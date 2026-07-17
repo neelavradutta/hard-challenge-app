@@ -41,6 +41,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -86,6 +87,8 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -220,7 +223,8 @@ fun HomeScreen(vm: GrindViewModel) {
                         },
                         onNote = { vm.setNote(item.id, it) },
                         onToggleSub = { vm.toggleSub(item.id, it) },
-                        onDuration = { vm.setDuration(item.id, it) }
+                        onDuration = { vm.setDuration(item.id, it) },
+                        onLabel = { vm.setLabel(item.id, it) }
                     )
                 }
             }
@@ -319,9 +323,11 @@ private fun ChecklistRow(
     onExpand: () -> Unit,
     onNote: (String) -> Unit,
     onToggleSub: (String) -> Unit,
-    onDuration: (String) -> Unit
+    onDuration: (String) -> Unit,
+    onLabel: (String) -> Unit
 ) {
     val colors = GrindTheme.colors
+    val focusManager = LocalFocusManager.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -358,25 +364,57 @@ private fun ChecklistRow(
             }
             Spacer(Modifier.width(12.dp))
             var editHours by remember { mutableStateOf(false) }
+            var editLabel by remember { mutableStateOf(false) }
             val isPlain = item.id == Defaults.SLEEP_ID ||
                 item.id == Defaults.WAKE_ID || item.id == Defaults.SCREEN_ID
-            Text(
-                text = if (isPlain && !editHours && item.duration != null)
-                    "${item.label} ${item.duration}" else item.label,
-                color = colors.textPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .weight(1f)
-                    .then(
-                        if (isPlain) Modifier.combinedClickable(
+            if (editLabel) {
+                val labelFocus = remember { FocusRequester() }
+                var labelGotFocus by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { labelFocus.requestFocus() }
+                BasicTextField(
+                    value = item.label,
+                    onValueChange = onLabel,
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = colors.textPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    cursorBrush = SolidColor(colors.accent),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(labelFocus)
+                        .onFocusEvent { state ->
+                            if (state.isFocused) {
+                                labelGotFocus = true
+                            } else if (labelGotFocus) {
+                                editLabel = false
+                                // left empty → restore default heading
+                                if (item.label.isBlank()) {
+                                    Defaults.checklist.find { it.id == item.id }
+                                        ?.label?.let(onLabel)
+                                }
+                            }
+                        }
+                )
+            } else {
+                Text(
+                    text = item.label,
+                    color = colors.textPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .weight(1f)
+                        .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = onExpand,
-                            onLongClick = { editHours = true }
-                        ) else Modifier
-                    )
-            )
+                            onLongClick = { editLabel = true }
+                        )
+                )
+            }
             if (editHours) {
                 val focusRequester = remember { FocusRequester() }
                 var gotFocus by remember { mutableStateOf(false) }
@@ -419,8 +457,10 @@ private fun ChecklistRow(
                                 textAlign = TextAlign.Center
                             ),
                             keyboardOptions = KeyboardOptions(
-                                keyboardType = if (isTime) KeyboardType.Text else KeyboardType.Decimal
+                                keyboardType = if (isTime) KeyboardType.Text else KeyboardType.Decimal,
+                                imeAction = ImeAction.Done
                             ),
+                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                             cursorBrush = SolidColor(colors.accent),
                             modifier = Modifier
                                 .width(if (isTime) 58.dp else 30.dp)
@@ -458,15 +498,12 @@ private fun ChecklistRow(
                 }
                 Spacer(Modifier.width(6.dp))
             } else if (!isPlain && (item.duration != null || expanded)) {
-                // long-press pill to edit hours — tap still expands the row
+                // tap pill itself to edit hours — row tap won't touch it
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(colors.accent.copy(alpha = 0.15f))
-                        .combinedClickable(
-                            onClick = onExpand,
-                            onLongClick = { editHours = true }
-                        )
+                        .clickable { editHours = true }
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
@@ -528,6 +565,8 @@ private fun ChecklistRow(
                 onValueChange = onNote,
                 singleLine = true,
                 textStyle = TextStyle(color = colors.textPrimary, fontSize = 16.sp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 cursorBrush = SolidColor(colors.accent),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -618,19 +657,25 @@ private fun BulletField(
     onFocus: () -> Unit = {}
 ) {
     val colors = GrindTheme.colors
+    val focusManager = LocalFocusManager.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            "$number.",
-            color = colors.accent,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(end = 8.dp)
-        )
+        // number only appears once user starts writing
+        if (value.isNotEmpty()) {
+            Text(
+                "$number.",
+                color = colors.accent,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
         BasicTextField(
             value = value,
             onValueChange = onChange,
             singleLine = true,
             textStyle = TextStyle(color = colors.textPrimary, fontSize = 15.sp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
             cursorBrush = SolidColor(colors.accent),
             modifier = Modifier
                 .weight(1f)
@@ -861,6 +906,7 @@ private fun ExportOption(
 private fun NumberSetting(label: String, value: Int, onValue: (Int) -> Unit) {
     val colors = GrindTheme.colors
     var text by remember(value) { mutableStateOf(value.toString()) }
+    val focusManager = LocalFocusManager.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = colors.textSecondary, fontSize = 13.sp)
         Spacer(Modifier.width(8.dp))
@@ -884,7 +930,11 @@ private fun NumberSetting(label: String, value: Int, onValue: (Int) -> Unit) {
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 cursorBrush = SolidColor(colors.accent),
                 modifier = Modifier.width(44.dp)
             )
