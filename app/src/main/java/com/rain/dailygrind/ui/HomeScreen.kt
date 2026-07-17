@@ -14,6 +14,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -309,6 +310,7 @@ private fun DownloadButton(onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChecklistRow(
     item: ChecklistItem,
@@ -355,14 +357,26 @@ private fun ChecklistRow(
                 }
             }
             Spacer(Modifier.width(12.dp))
+            var editHours by remember { mutableStateOf(false) }
+            val isPlain = item.id == Defaults.SLEEP_ID ||
+                item.id == Defaults.WAKE_ID || item.id == Defaults.SCREEN_ID
             Text(
-                text = item.label,
+                text = if (isPlain && !editHours && item.duration != null)
+                    "${item.label} ${item.duration}" else item.label,
                 color = colors.textPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .then(
+                        if (isPlain) Modifier.combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onExpand,
+                            onLongClick = { editHours = true }
+                        ) else Modifier
+                    )
             )
-            var editHours by remember { mutableStateOf(false) }
             if (editHours) {
                 val focusRequester = remember { FocusRequester() }
                 var gotFocus by remember { mutableStateOf(false) }
@@ -443,13 +457,16 @@ private fun ChecklistRow(
                     }
                 }
                 Spacer(Modifier.width(6.dp))
-            } else if (item.duration != null || expanded) {
-                // tap pill itself to edit hours — row tap won't touch it
+            } else if (!isPlain && (item.duration != null || expanded)) {
+                // long-press pill to edit hours — tap still expands the row
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(colors.accent.copy(alpha = 0.15f))
-                        .clickable { editHours = true }
+                        .combinedClickable(
+                            onClick = onExpand,
+                            onLongClick = { editHours = true }
+                        )
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
