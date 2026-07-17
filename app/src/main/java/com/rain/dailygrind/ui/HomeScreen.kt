@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -373,32 +374,73 @@ private fun ChecklistRow(
                         .border(1.dp, colors.accent.copy(alpha = 0.5f), RoundedCornerShape(50))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    BasicTextField(
-                        value = item.duration ?: "",
-                        onValueChange = onDuration,
-                        singleLine = true,
-                        textStyle = TextStyle(
-                            color = colors.accent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        cursorBrush = SolidColor(colors.accent),
-                        modifier = Modifier
-                            .width(56.dp)
-                            .focusRequester(focusRequester)
-                            .onFocusEvent {
-                                if (it.isFocused) gotFocus = true
-                                else if (gotFocus) editHours = false
-                            },
-                        decorationBox = { inner ->
-                            Box {
-                                if (item.duration == null) {
-                                    Text("hrs…", color = colors.accent.copy(alpha = 0.5f), fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val isCount = item.id == Defaults.JOBS_ID
+                        val isTime = item.id == Defaults.SLEEP_ID || item.id == Defaults.WAKE_ID
+                        val numValue = if (isTime) item.duration ?: ""
+                        else item.duration?.removeSuffix("hrs")?.removeSuffix("hr")?.trim() ?: ""
+                        BasicTextField(
+                            value = numValue,
+                            onValueChange = { new ->
+                                if (isTime) {
+                                    val t = new.filter {
+                                        it.isDigit() || it == ':' || it == ' ' ||
+                                            it.uppercaseChar() in listOf('A', 'P', 'M')
+                                    }.take(8)
+                                    onDuration(t)
+                                } else {
+                                    val num = new.filter { it.isDigit() || it == '.' }.take(4)
+                                    onDuration(
+                                        if (num.isBlank()) ""
+                                        else if (isCount) num
+                                        else "$num hrs"
+                                    )
                                 }
-                                inner()
+                            },
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                color = colors.accent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = if (isTime) KeyboardType.Text else KeyboardType.Decimal
+                            ),
+                            cursorBrush = SolidColor(colors.accent),
+                            modifier = Modifier
+                                .width(if (isTime) 58.dp else 30.dp)
+                                .focusRequester(focusRequester)
+                                .onFocusEvent { state ->
+                                    if (state.isFocused) {
+                                        gotFocus = true
+                                    } else if (gotFocus) {
+                                        editHours = false
+                                        // left empty → restore item's default hours
+                                        if (item.duration.isNullOrBlank()) {
+                                            Defaults.checklist.find { it.id == item.id }
+                                                ?.duration?.let(onDuration)
+                                        }
+                                    }
+                                },
+                            decorationBox = { inner ->
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (numValue.isEmpty()) {
+                                        Text("0", color = colors.accent.copy(alpha = 0.4f), fontSize = 12.sp)
+                                    }
+                                    inner()
+                                }
                             }
+                        )
+                        if (!isCount && !isTime) {
+                            Text(
+                                text = " hrs",
+                                color = colors.accent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
-                    )
+                    }
                 }
                 Spacer(Modifier.width(6.dp))
             } else if (item.duration != null || expanded) {
@@ -411,7 +453,11 @@ private fun ChecklistRow(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = item.duration ?: "+ hrs",
+                        text = item.duration ?: when (item.id) {
+                            Defaults.JOBS_ID -> "+ count"
+                            Defaults.SLEEP_ID, Defaults.WAKE_ID -> "+ time"
+                            else -> "+ hrs"
+                        },
                         color = colors.accent.copy(alpha = if (item.duration == null) 0.6f else 1f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -464,7 +510,7 @@ private fun ChecklistRow(
                 value = item.note,
                 onValueChange = onNote,
                 singleLine = true,
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 16.sp),
                 cursorBrush = SolidColor(colors.accent),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -482,7 +528,7 @@ private fun ChecklistRow(
                 decorationBox = { inner ->
                     Box {
                         if (item.note.isEmpty()) {
-                            Text("Notes", color = colors.textSecondary, fontSize = 14.sp)
+                            Text("Notes", color = colors.textSecondary, fontSize = 16.sp)
                         }
                         inner()
                     }
@@ -616,20 +662,23 @@ private fun ExportSheet(
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Box {
-            // Full-res offscreen capture target — renders whichever card is selected
-            Box(
-                modifier = Modifier
-                    .offset((-4000).dp)
-                    .size(fullW, fullH)
-                    .drawWithContent {
-                        layer.record { this@drawWithContent.drawContent() }
-                        drawLayer(layer)
+            // Full-res offscreen capture target — zero layout size so the
+            // sheet height never depends on the export canvas dimensions
+            Box(Modifier.size(0.dp)) {
+                Box(
+                    modifier = Modifier
+                        .offset((-4000).dp)
+                        .requiredSize(fullW, fullH)
+                        .drawWithContent {
+                            layer.record { this@drawWithContent.drawContent() }
+                            drawLayer(layer)
+                        }
+                ) {
+                    if (coverSelected) {
+                        CoverCard(day = coverDay, totalDays = totalDays, width = fullW, height = fullH)
+                    } else {
+                        ExportCard(log = log, width = fullW, height = fullH)
                     }
-            ) {
-                if (coverSelected) {
-                    CoverCard(day = coverDay, totalDays = totalDays, width = fullW, height = fullH)
-                } else {
-                    ExportCard(log = log, width = fullW, height = fullH)
                 }
             }
 
@@ -645,10 +694,10 @@ private fun ExportSheet(
 
                 // ── left / right choice ──
                 val thumbW = 132.dp
+                val thumbH = thumbW * EXPORT_H / EXPORT_W
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.Bottom
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     ExportOption(
                         label = "Today's Checklist",
@@ -659,7 +708,7 @@ private fun ExportSheet(
                         ExportCard(
                             log = log,
                             width = thumbW,
-                            height = thumbW * EXPORT_H / EXPORT_W,
+                            height = thumbH,
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                         )
                     }
@@ -669,11 +718,12 @@ private fun ExportSheet(
                         onClick = { coverSelected = true },
                         modifier = Modifier.weight(1f)
                     ) {
+                        // same height as checklist thumb, width from cover ratio
                         CoverCard(
                             day = coverDay,
                             totalDays = totalDays,
-                            width = thumbW,
-                            height = thumbW * COVER_H / COVER_W,
+                            width = thumbH * COVER_W / COVER_H,
+                            height = thumbH,
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                         )
                     }

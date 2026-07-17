@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rain.dailygrind.data.ChecklistItem
 import com.rain.dailygrind.data.DailyLog
+import com.rain.dailygrind.data.Defaults
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -312,7 +313,10 @@ private fun ChecklistExportRow(item: ChecklistItem, s: Float) {
         if (item.duration != null) {
             Spacer(Modifier.width((4 * s).dp))
             Text(
-                text = "(${item.duration})",
+                text = when (item.id) {
+                    Defaults.SLEEP_ID, Defaults.WAKE_ID, Defaults.SCREEN_ID -> item.duration
+                    else -> "(${item.duration})"
+                },
                 color = LabelGray,
                 fontSize = (9.5f * s).sp,
                 fontWeight = FontWeight.Medium,

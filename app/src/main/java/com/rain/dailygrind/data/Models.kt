@@ -19,6 +19,10 @@ data class DailyLog(
 
 object Defaults {
     const val SUBJECTS_ID = 5
+    const val JOBS_ID = 6
+    const val SLEEP_ID = 8
+    const val WAKE_ID = 9
+    const val SCREEN_ID = 10
     val subjects = listOf("CN", "OS", "OOPS", "System Design")
     val checklist = listOf(
         ChecklistItem(1, "DSA", "2 hrs"),
@@ -28,8 +32,8 @@ object Defaults {
         ChecklistItem(5, "Subjects (any 2)", "2 hrs"),
         ChecklistItem(6, "Job applied", null),
         ChecklistItem(7, "Walk", "1 hr"),
-        ChecklistItem(8, "Sleep before 2 AM", null),
-        ChecklistItem(9, "Woke up before 8:30 AM", null),
-        ChecklistItem(10, "Screen time < 3 hrs", null)
+        ChecklistItem(8, "Sleep before", "2 AM"),
+        ChecklistItem(9, "Wake up before", "8:30 AM"),
+        ChecklistItem(10, "Screen time <", "3 hrs")
     )
 }

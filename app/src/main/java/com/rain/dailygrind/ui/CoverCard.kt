@@ -63,7 +63,7 @@ fun CoverCard(
                     .align(Alignment.TopCenter)
                     .offset(y = height * 0.123f)
                     .width(width * 0.42f)
-                    .height(height * 0.205f)
+                    .height(height * 0.190f)
                     .clip(RoundedCornerShape((14 * s).dp))
                     .background(PatchCream),
                 contentAlignment = Alignment.Center
@@ -82,9 +82,9 @@ fun CoverCard(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = height * 0.352f)
+                    .offset(y = height * 0.358f)
                     .width(width * 0.60f)
-                    .height(height * 0.085f)
+                    .height(height * 0.068f)
                     .clip(RoundedCornerShape((10 * s).dp))
                     .background(PatchCream),
                 contentAlignment = Alignment.Center
@@ -92,7 +92,7 @@ fun CoverCard(
                 Text(
                     text = "$totalDays DAYS",
                     color = PosterGreen,
-                    fontSize = (38 * s).sp,
+                    fontSize = (34 * s).sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (1 * s).sp
                 )

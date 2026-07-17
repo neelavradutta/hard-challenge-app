@@ -49,10 +49,14 @@ class LogRepository(private val context: Context) {
             else -> null
         }
         return if (candidate != null) {
-            // labels may change between app versions — always take current ones
+            // labels may change between app versions — always take current ones;
+            // fill missing duration with default (e.g. times moved into duration)
             candidate.copy(items = candidate.items.map { item ->
                 val def = Defaults.checklist.find { it.id == item.id }
-                if (def != null) item.copy(label = def.label) else item
+                if (def != null) item.copy(
+                    label = def.label,
+                    duration = item.duration ?: def.duration
+                ) else item
             })
         } else {
             val fresh = fresh(today)
