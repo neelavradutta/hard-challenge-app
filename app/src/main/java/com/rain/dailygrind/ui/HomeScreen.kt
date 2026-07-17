@@ -330,13 +330,15 @@ private fun ChecklistRow(
 ) {
     val colors = GrindTheme.colors
     val focusManager = LocalFocusManager.current
+    // crossed rows don't expand (no notes) — except Subjects, whose chips drive the check
+    val canExpand = item.isChecked || item.id == Defaults.SUBJECTS_ID
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(colors.bgSurface)
             .border(1.dp, colors.divider, RoundedCornerShape(14.dp))
-            .clickable(onClick = onExpand)
+            .clickable { if (canExpand) onExpand() }
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -420,7 +422,7 @@ private fun ChecklistRow(
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = onExpand,
+                            onClick = { if (canExpand) onExpand() },
                             onLongClick = { editLabel = true }
                         )
                 )
@@ -576,7 +578,7 @@ private fun ChecklistRow(
                 }
             }
         }
-        AnimatedVisibility(visible = expanded || item.note.isNotBlank()) {
+        AnimatedVisibility(visible = item.isChecked && (expanded || item.note.isNotBlank())) {
             var noteValue by remember {
                 mutableStateOf(TextFieldValue(item.note, TextRange(item.note.length)))
             }
@@ -644,8 +646,8 @@ private fun WhatIDidSection(bullets: List<String>, onChange: (Int, String) -> Un
         Text(
             text = "WHAT I DID TODAY",
             color = colors.textSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )
         Spacer(Modifier.height(12.dp))
