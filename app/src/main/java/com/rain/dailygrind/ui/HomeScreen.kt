@@ -88,7 +88,9 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -370,10 +372,18 @@ private fun ChecklistRow(
             if (editLabel) {
                 val labelFocus = remember { FocusRequester() }
                 var labelGotFocus by remember { mutableStateOf(false) }
+                var labelValue by remember {
+                    mutableStateOf(TextFieldValue(item.label, TextRange(item.label.length)))
+                }
                 LaunchedEffect(Unit) { labelFocus.requestFocus() }
                 BasicTextField(
-                    value = item.label,
-                    onValueChange = onLabel,
+                    value = labelValue,
+                    onValueChange = {
+                        val t = it.text.take(40)
+                        labelValue = if (t == it.text) it
+                        else TextFieldValue(t, TextRange(t.length))
+                        onLabel(t)
+                    },
                     singleLine = true,
                     textStyle = TextStyle(
                         color = colors.textPrimary,
@@ -429,25 +439,32 @@ private fun ChecklistRow(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val isCount = item.id == Defaults.JOBS_ID
                         val isTime = item.id == Defaults.SLEEP_ID || item.id == Defaults.WAKE_ID
-                        val numValue = if (isTime) item.duration ?: ""
+                        val initial = if (isTime) item.duration ?: ""
                         else item.duration?.removeSuffix("hrs")?.removeSuffix("hr")?.trim() ?: ""
+                        // TextFieldValue so cursor starts after the number, not before
+                        var fieldValue by remember {
+                            mutableStateOf(TextFieldValue(initial, TextRange(initial.length)))
+                        }
                         BasicTextField(
-                            value = numValue,
+                            value = fieldValue,
                             onValueChange = { new ->
-                                if (isTime) {
-                                    val t = new.filter {
+                                val filtered = if (isTime) {
+                                    new.text.filter {
                                         it.isDigit() || it == ':' || it == ' ' ||
                                             it.uppercaseChar() in listOf('A', 'P', 'M')
                                     }.take(8)
-                                    onDuration(t)
                                 } else {
-                                    val num = new.filter { it.isDigit() || it == '.' }.take(4)
-                                    onDuration(
-                                        if (num.isBlank()) ""
-                                        else if (isCount) num
-                                        else "$num hrs"
-                                    )
+                                    new.text.filter { it.isDigit() || it == '.' }.take(4)
                                 }
+                                fieldValue = TextFieldValue(
+                                    filtered,
+                                    TextRange(minOf(new.selection.end, filtered.length))
+                                )
+                                onDuration(
+                                    if (filtered.isBlank()) ""
+                                    else if (isTime || isCount) filtered
+                                    else "$filtered hrs"
+                                )
                             },
                             singleLine = true,
                             textStyle = TextStyle(
@@ -479,7 +496,7 @@ private fun ChecklistRow(
                                 },
                             decorationBox = { inner ->
                                 Box(contentAlignment = Alignment.Center) {
-                                    if (numValue.isEmpty()) {
+                                    if (fieldValue.text.isEmpty()) {
                                         Text("0", color = colors.accent.copy(alpha = 0.4f), fontSize = 12.sp)
                                     }
                                     inner()
@@ -560,9 +577,19 @@ private fun ChecklistRow(
             }
         }
         AnimatedVisibility(visible = expanded || item.note.isNotBlank()) {
+            var noteValue by remember {
+                mutableStateOf(TextFieldValue(item.note, TextRange(item.note.length)))
+            }
+            if (noteValue.text != item.note) {
+                // external change (new day / reload) — resync, cursor at end
+                noteValue = TextFieldValue(item.note, TextRange(item.note.length))
+            }
             BasicTextField(
-                value = item.note,
-                onValueChange = onNote,
+                value = noteValue,
+                onValueChange = {
+                    noteValue = it
+                    onNote(it.text)
+                },
                 singleLine = true,
                 textStyle = TextStyle(color = colors.textPrimary, fontSize = 16.sp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -639,7 +666,7 @@ private fun WhatIDidSection(bullets: List<String>, onChange: (Int, String) -> Un
                 BulletField(
                     number = 2,
                     value = bullets.getOrElse(1) { "" },
-                    placeholder = "+ add second point",
+                    placeholder = "Next thought",
                     onChange = { onChange(1, it) },
                     onFocus = onFieldFocus
                 )
@@ -658,6 +685,13 @@ private fun BulletField(
 ) {
     val colors = GrindTheme.colors
     val focusManager = LocalFocusManager.current
+    var fieldValue by remember {
+        mutableStateOf(TextFieldValue(value, TextRange(value.length)))
+    }
+    if (fieldValue.text != value) {
+        // external change (new day / reload) — resync, cursor at end
+        fieldValue = TextFieldValue(value, TextRange(value.length))
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         // number only appears once user starts writing
         if (value.isNotEmpty()) {
@@ -670,8 +704,11 @@ private fun BulletField(
             )
         }
         BasicTextField(
-            value = value,
-            onValueChange = onChange,
+            value = fieldValue,
+            onValueChange = {
+                fieldValue = it
+                onChange(it.text)
+            },
             singleLine = true,
             textStyle = TextStyle(color = colors.textPrimary, fontSize = 15.sp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -905,7 +942,9 @@ private fun ExportOption(
 @Composable
 private fun NumberSetting(label: String, value: Int, onValue: (Int) -> Unit) {
     val colors = GrindTheme.colors
-    var text by remember(value) { mutableStateOf(value.toString()) }
+    var text by remember(value) {
+        mutableStateOf(TextFieldValue(value.toString(), TextRange(value.toString().length)))
+    }
     val focusManager = LocalFocusManager.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = colors.textSecondary, fontSize = 13.sp)
@@ -920,8 +959,12 @@ private fun NumberSetting(label: String, value: Int, onValue: (Int) -> Unit) {
             BasicTextField(
                 value = text,
                 onValueChange = { new ->
-                    text = new.filter { it.isDigit() }.take(3)
-                    text.toIntOrNull()?.let(onValue)
+                    val digits = new.text.filter { it.isDigit() }.take(3)
+                    text = TextFieldValue(
+                        digits,
+                        TextRange(minOf(new.selection.end, digits.length))
+                    )
+                    digits.toIntOrNull()?.let(onValue)
                 },
                 singleLine = true,
                 textStyle = TextStyle(
