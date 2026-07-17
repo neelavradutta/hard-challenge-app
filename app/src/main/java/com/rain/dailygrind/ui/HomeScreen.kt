@@ -644,11 +644,10 @@ private fun WhatIDidSection(bullets: List<String>, onChange: (Int, String) -> Un
             .padding(16.dp)
     ) {
         Text(
-            text = "WHAT I DID TODAY",
-            color = colors.textSecondary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
+            text = "What I Did Today",
+            color = colors.textPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
         )
         Spacer(Modifier.height(12.dp))
         BulletField(
