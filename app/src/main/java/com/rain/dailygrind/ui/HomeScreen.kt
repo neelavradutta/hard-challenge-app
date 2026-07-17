@@ -601,8 +601,10 @@ private fun ExportSheet(
     var busy by remember { mutableStateOf(false) }
     var coverSelected by remember { mutableStateOf(false) }
 
-    val fullW = with(density) { EXPORT_W.toDp() }
-    val fullH = with(density) { EXPORT_H.toDp() }
+    val exW = if (coverSelected) COVER_W else EXPORT_W
+    val exH = if (coverSelected) COVER_H else EXPORT_H
+    val fullW = with(density) { exW.toDp() }
+    val fullH = with(density) { exH.toDp() }
 
     suspend fun capture(): Bitmap =
         layer.toImageBitmap().asAndroidBitmap().copy(Bitmap.Config.ARGB_8888, false)
@@ -642,11 +644,11 @@ private fun ExportSheet(
                 Spacer(Modifier.height(14.dp))
 
                 // ── left / right choice ──
-                val thumbW = 150.dp
-                val thumbH = thumbW * EXPORT_H / EXPORT_W
+                val thumbW = 132.dp
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.Bottom
                 ) {
                     ExportOption(
                         label = "Today's Checklist",
@@ -657,7 +659,7 @@ private fun ExportSheet(
                         ExportCard(
                             log = log,
                             width = thumbW,
-                            height = thumbH,
+                            height = thumbW * EXPORT_H / EXPORT_W,
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                         )
                     }
@@ -671,7 +673,7 @@ private fun ExportSheet(
                             day = coverDay,
                             totalDays = totalDays,
                             width = thumbW,
-                            height = thumbH,
+                            height = thumbW * COVER_H / COVER_W,
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                         )
                     }
