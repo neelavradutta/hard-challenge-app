@@ -1,6 +1,0 @@
-- [x] Fix errors in `SplashScreen.kt` (missing imports and `layout` implementation)
-- [x] Clean up warnings in `SplashScreen.kt` (unused variables)
-- [x] Remove unused `colors` parameter in `ExportCard.kt`
-- [x] Update deprecated icons in `ExportCard.kt`
-- [x] Update `delay` and `debounce` to use `Duration` in `GrindViewModel.kt`, `MainActivity.kt`, and `HomeScreen.kt`
-- [x] Verify build

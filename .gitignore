@@ -1,13 +1,43 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local config
+local.properties
+
+# IDE
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea
+.vscode/
+
+# Kotlin
+.kotlin/
+
+# OS
 .DS_Store
-/build
-/app/build
-/captures
-.externalNativeBuild
-.cxx
+Thumbs.db
+
+# Build outputs
 *.apk
 *.ap_
 *.aab
+*.dex
+output-metadata.json
+
+# Native
+.externalNativeBuild/
+.cxx/
+
+# Misc
+/captures
+*.log
+*.hprof
+
+# Signing keys — never commit
+*.jks
+*.keystore
+
+# Agent/tooling junk
+.artifacts/
+.tools/
